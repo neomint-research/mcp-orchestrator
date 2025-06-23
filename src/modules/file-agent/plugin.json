@@ -1,0 +1,155 @@
+{
+  "name": "file-agent",
+  "version": "1.0.0",
+  "description": "MCP File Agent - Provides file system operations including read, write, list, create, and delete functionality",
+  "type": "mcp-server",
+  "author": "NEOMINT Research",
+  "license": "MIT",
+  "main": "backend/index.js",
+  "mcp": {
+    "server": {
+      "name": "file-agent",
+      "version": "1.0.0",
+      "protocol": "http",
+      "port": 3001,
+      "endpoints": {
+        "initialize": "/mcp",
+        "tools": "/mcp",
+        "health": "/health"
+      }
+    },
+    "capabilities": {
+      "tools": {
+        "read_file": {
+          "description": "Read contents of a file",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Path to the file to read"
+              },
+              "encoding": {
+                "type": "string",
+                "description": "File encoding (default: utf8)",
+                "default": "utf8"
+              }
+            },
+            "required": ["path"]
+          }
+        },
+        "write_file": {
+          "description": "Write content to a file",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Path to the file to write"
+              },
+              "content": {
+                "type": "string",
+                "description": "Content to write to the file"
+              },
+              "encoding": {
+                "type": "string",
+                "description": "File encoding (default: utf8)",
+                "default": "utf8"
+              },
+              "createDirectories": {
+                "type": "boolean",
+                "description": "Create parent directories if they don't exist",
+                "default": false
+              }
+            },
+            "required": ["path", "content"]
+          }
+        },
+        "list_directory": {
+          "description": "List contents of a directory",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Path to the directory to list"
+              },
+              "recursive": {
+                "type": "boolean",
+                "description": "List recursively",
+                "default": false
+              },
+              "includeHidden": {
+                "type": "boolean",
+                "description": "Include hidden files and directories",
+                "default": false
+              }
+            },
+            "required": ["path"]
+          }
+        },
+        "create_directory": {
+          "description": "Create a directory",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Path to the directory to create"
+              },
+              "recursive": {
+                "type": "boolean",
+                "description": "Create parent directories if they don't exist",
+                "default": false
+              }
+            },
+            "required": ["path"]
+          }
+        },
+        "delete_file": {
+          "description": "Delete a file or directory",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Path to the file or directory to delete"
+              },
+              "recursive": {
+                "type": "boolean",
+                "description": "Delete recursively (for directories)",
+                "default": false
+              },
+              "force": {
+                "type": "boolean",
+                "description": "Force deletion without confirmation",
+                "default": false
+              }
+            },
+            "required": ["path"]
+          }
+        }
+      }
+    }
+  },
+  "docker": {
+    "labels": {
+      "mcp.server": "true",
+      "mcp.server.name": "file-agent",
+      "mcp.server.port": "3001",
+      "mcp.server.protocol": "http"
+    }
+  },
+  "dependencies": {
+    "fs": "builtin",
+    "path": "builtin",
+    "util": "builtin"
+  },
+  "keywords": [
+    "mcp",
+    "file-system",
+    "agent",
+    "file-operations",
+    "neomint"
+  ]
+}

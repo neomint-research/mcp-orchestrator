@@ -1,0 +1,122 @@
+{
+  "name": "intent-agent",
+  "version": "1.0.0",
+  "description": "MCP Intent Agent - Provides natural language understanding and intent analysis capabilities",
+  "type": "mcp-server",
+  "author": "NEOMINT Research",
+  "license": "MIT",
+  "main": "backend/index.js",
+  "mcp": {
+    "server": {
+      "name": "intent-agent",
+      "version": "1.0.0",
+      "protocol": "http",
+      "port": 3003,
+      "endpoints": {
+        "initialize": "/mcp",
+        "tools": "/mcp",
+        "health": "/health"
+      }
+    },
+    "capabilities": {
+      "tools": {
+        "analyze_intent": {
+          "description": "Analyze the intent and structure of natural language input",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "description": "The text to analyze for intent"
+              },
+              "context": {
+                "type": "object",
+                "description": "Additional context for intent analysis"
+              }
+            },
+            "required": ["text"]
+          }
+        },
+        "extract_entities": {
+          "description": "Extract named entities and key information from text",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "description": "The text to extract entities from"
+              },
+              "entityTypes": {
+                "type": "array",
+                "description": "Specific entity types to look for",
+                "items": { "type": "string" }
+              }
+            },
+            "required": ["text"]
+          }
+        },
+        "disambiguate": {
+          "description": "Disambiguate ambiguous terms or phrases in context",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "description": "The text containing ambiguous terms"
+              },
+              "ambiguousTerms": {
+                "type": "array",
+                "description": "Specific terms to disambiguate",
+                "items": { "type": "string" }
+              },
+              "context": {
+                "type": "object",
+                "description": "Context for disambiguation"
+              }
+            },
+            "required": ["text"]
+          }
+        },
+        "suggest_tools": {
+          "description": "Suggest appropriate tools based on intent analysis",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "intent": {
+                "type": "string",
+                "description": "The analyzed intent"
+              },
+              "availableTools": {
+                "type": "array",
+                "description": "List of available tools to choose from",
+                "items": { "type": "string" }
+              },
+              "context": {
+                "type": "object",
+                "description": "Additional context for tool suggestion"
+              }
+            },
+            "required": ["intent"]
+          }
+        }
+      }
+    }
+  },
+  "docker": {
+    "labels": {
+      "mcp.server": "true",
+      "mcp.server.name": "intent-agent",
+      "mcp.server.port": "3003",
+      "mcp.server.protocol": "http"
+    }
+  },
+  "keywords": [
+    "mcp",
+    "intent",
+    "nlu",
+    "nlp",
+    "agent",
+    "analysis",
+    "neomint"
+  ]
+}

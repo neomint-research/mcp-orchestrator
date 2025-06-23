@@ -1,0 +1,112 @@
+{
+  "name": "task-agent",
+  "version": "1.0.0",
+  "description": "MCP Task Agent - Provides project and task management with PiD-based orchestration capabilities",
+  "type": "mcp-server",
+  "author": "NEOMINT Research",
+  "license": "MIT",
+  "main": "backend/index.js",
+  "mcp": {
+    "server": {
+      "name": "task-agent",
+      "version": "1.0.0",
+      "protocol": "http",
+      "port": 3004,
+      "endpoints": {
+        "initialize": "/mcp",
+        "tools": "/mcp",
+        "health": "/health"
+      }
+    },
+    "capabilities": {
+      "tools": {
+        "create_project": {
+          "description": "Create a new project with PiD structure",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "description": "Project name" },
+              "description": { "type": "string", "description": "Project description" },
+              "metadata": { "type": "object", "description": "Additional project metadata" }
+            },
+            "required": ["name", "description"]
+          }
+        },
+        "add_phase": {
+          "description": "Add a phase to a project",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "projectId": { "type": "string", "description": "Project ID" },
+              "name": { "type": "string", "description": "Phase name" },
+              "description": { "type": "string", "description": "Phase description" }
+            },
+            "required": ["projectId", "name", "description"]
+          }
+        },
+        "add_task": {
+          "description": "Add a task to a phase",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "projectId": { "type": "string", "description": "Project ID" },
+              "phaseId": { "type": "string", "description": "Phase ID" },
+              "name": { "type": "string", "description": "Task name" },
+              "description": { "type": "string", "description": "Task description" },
+              "dependencies": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["projectId", "phaseId", "name", "description"]
+          }
+        },
+        "execute_task": {
+          "description": "Execute a specific task",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "projectId": { "type": "string", "description": "Project ID" },
+              "taskId": { "type": "string", "description": "Task ID" }
+            },
+            "required": ["projectId", "taskId"]
+          }
+        },
+        "get_project_status": {
+          "description": "Get the status of a project",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "projectId": { "type": "string", "description": "Project ID" }
+            },
+            "required": ["projectId"]
+          }
+        },
+        "validate_dependencies": {
+          "description": "Validate task dependencies in a project",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "projectId": { "type": "string", "description": "Project ID" }
+            },
+            "required": ["projectId"]
+          }
+        }
+      }
+    }
+  },
+  "docker": {
+    "labels": {
+      "mcp.server": "true",
+      "mcp.server.name": "task-agent",
+      "mcp.server.port": "3004",
+      "mcp.server.protocol": "http"
+    }
+  },
+  "keywords": [
+    "mcp",
+    "task",
+    "project",
+    "management",
+    "agent",
+    "pid",
+    "neomint"
+  ]
+}
