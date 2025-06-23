@@ -12,6 +12,7 @@ const { Discovery } = require('./discovery');
 const { Router } = require('./router');
 const { Validator } = require('./validator');
 const { Hardening } = require('./hardening');
+const { RegistryManager } = require('./registry');
 
 class MCPOrchestrator extends EventEmitter {
     constructor(config = {}) {
@@ -34,6 +35,7 @@ class MCPOrchestrator extends EventEmitter {
         this.router = new Router(this.config);
         this.validator = new Validator(this.config);
         this.hardening = new Hardening(this.config);
+        this.registry = new RegistryManager(this.config);
         
         // Bind event handlers
         this.setupEventHandlers();
@@ -47,13 +49,16 @@ class MCPOrchestrator extends EventEmitter {
     async initialize(params = {}) {
         try {
             this.log('INFO', 'Starting orchestrator initialization...');
-            
+
+            // Initialize registry
+            await this.registry.initialize();
+
             // Validate initialization parameters
             const validationResult = this.validator.validateInitialize(params);
             if (!validationResult.valid) {
                 throw new Error(`Invalid initialization parameters: ${validationResult.error}`);
             }
-            
+
             // Discover available agents
             const discoveredAgents = await this.discovery.discoverAgents();
             this.log('INFO', `Discovered ${discoveredAgents.length} agents`);
@@ -64,6 +69,7 @@ class MCPOrchestrator extends EventEmitter {
                     await this.initializeAgent(agent);
                 } catch (error) {
                     this.log('WARN', `Failed to initialize agent ${agent.name}: ${error.message}`);
+                    await this.registry.logError(agent.id, 'initialize', error);
                 }
             }
             
@@ -202,7 +208,7 @@ class MCPOrchestrator extends EventEmitter {
             };
             
             this.agents.set(agentConfig.id, agent);
-            
+
             // Register tools in the tool registry
             for (const tool of agent.tools) {
                 this.toolRegistry.set(tool.name, {
@@ -211,7 +217,10 @@ class MCPOrchestrator extends EventEmitter {
                     inputSchema: tool.inputSchema
                 });
             }
-            
+
+            // Register with registry manager
+            await this.registry.registerPlugin(agentConfig, agent.tools);
+
             this.log('INFO', `Agent ${agentConfig.name} initialized with ${agent.tools.length} tools`);
             
         } catch (error) {
@@ -265,7 +274,8 @@ class MCPOrchestrator extends EventEmitter {
             initialized: this.initialized,
             agentCount: this.agents.size,
             toolCount: this.toolRegistry.size,
-            activeAgents: Array.from(this.agents.values()).filter(a => a.status === 'active').length
+            activeAgents: Array.from(this.agents.values()).filter(a => a.status === 'active').length,
+            registry: this.registry ? this.registry.getStatus() : null
         };
     }
 }
