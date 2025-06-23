@@ -1,0 +1,81 @@
+{
+  "name": "mcp-multi-agent-orchestrator",
+  "version": "1.0.0",
+  "description": "A portable, memory-capable, docker-native orchestration layer for MCP tool agents with dynamic discovery, explicit intent routing, and test-driven development following NEOMINT-RESEARCH architecture patterns.",
+  "main": "src/core/backend/index.js",
+  "scripts": {
+    "start": "node src/core/backend/index.js",
+    "dev": "nodemon src/core/backend/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "docker:build": "docker build -f environments/core/Dockerfile -t mcp-orchestrator:latest .",
+    "docker:run": "docker run -p 3000:3000 -v /var/run/docker.sock:/var/run/docker.sock mcp-orchestrator:latest",
+    "compose:up": "cd deploy && docker-compose up --build",
+    "compose:down": "cd deploy && docker-compose down",
+    "health-check": "curl -f http://localhost:3000/health || exit 1"
+  },
+  "keywords": [
+    "mcp",
+    "multi-agent",
+    "orchestrator",
+    "docker",
+    "microservices",
+    "json-rpc",
+    "neomint"
+  ],
+  "author": "NEOMINT Research",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "events": "^3.3.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "eslint": "^8.55.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-n": "^16.4.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "supertest": "^6.3.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/**/*.test.js"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ]
+  },
+  "eslintConfig": {
+    "extends": [
+      "standard"
+    ],
+    "env": {
+      "node": true,
+      "jest": true
+    },
+    "rules": {
+      "no-console": "off"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neomint-research/mcp-orchestrator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/neomint-research/mcp-orchestrator/issues"
+  },
+  "homepage": "https://github.com/neomint-research/mcp-orchestrator#readme"
+}

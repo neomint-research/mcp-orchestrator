@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # MCP Multi-Agent Orchestrator Core
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: environments/core/Dockerfile
+    container_name: mcp-orchestrator-core
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount Docker socket for agent discovery
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Mount registry for persistent storage
+      - ../registry:/app/registry
+      # Mount logs directory
+      - ../temp:/app/temp
+    environment:
+      - NODE_ENV=production
+      - ORCHESTRATOR_PORT=3000
+      - ORCHESTRATOR_HOST=0.0.0.0
+      - LOG_LEVEL=INFO
+      - DISCOVERY_INTERVAL=30000
+      - MCP_TIMEOUT=30000
+      - DOCKER_SOCKET=/var/run/docker.sock
+    env_file:
+      - env/.env.core
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "mcp.orchestrator=true"
+      - "mcp.orchestrator.name=core-orchestrator"
+      - "mcp.orchestrator.version=1.0.0"
+      - "traefik.enable=true"
+      - "traefik.http.routers.orchestrator.rule=Host(`orchestrator.local`)"
+      - "traefik.http.services.orchestrator.loadbalancer.server.port=3000"
+
+  # Agent containers will be added here in Phase 5
+
+networks:
+  mcp-network:
+    driver: bridge
+    name: mcp-network
+    labels:
+      - "mcp.network=true"
+
+volumes:
+  registry-data:
+    driver: local
+    labels:
+      - "mcp.volume=registry"
+  
+  temp-data:
+    driver: local
+    labels:
+      - "mcp.volume=temp"
