@@ -10,12 +10,12 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      # Mount Docker socket for agent discovery
+      # Mount Docker socket for agent discovery (Windows)
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Mount registry for persistent storage
-      - ../registry:/app/registry
+      - registry-data:/app/registry
       # Mount logs directory
-      - ../temp:/app/temp
+      - temp-data:/app/temp
     environment:
       - NODE_ENV=production
       - ORCHESTRATOR_PORT=3000
@@ -52,7 +52,7 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ../temp:/app/workspace
+      - temp-data:/app/workspace
     environment:
       - NODE_ENV=production
       - FILE_AGENT_PORT=3001
@@ -75,7 +75,7 @@ services:
     ports:
       - "3002:3002"
     volumes:
-      - ../registry:/app/data
+      - registry-data:/app/data
     environment:
       - NODE_ENV=production
       - MEMORY_AGENT_PORT=3002
