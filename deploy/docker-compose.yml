@@ -43,7 +43,92 @@ services:
       - "traefik.http.routers.orchestrator.rule=Host(`orchestrator.local`)"
       - "traefik.http.services.orchestrator.loadbalancer.server.port=3000"
 
-  # Agent containers will be added here in Phase 5
+  # MCP Agent Modules
+  file-agent:
+    build:
+      context: ..
+      dockerfile: environments/modules/file-agent/Dockerfile
+    container_name: mcp-file-agent
+    ports:
+      - "3001:3001"
+    volumes:
+      - ../temp:/app/workspace
+    environment:
+      - NODE_ENV=production
+      - FILE_AGENT_PORT=3001
+      - FILE_AGENT_HOST=0.0.0.0
+      - FILE_AGENT_WORKDIR=/app/workspace
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    labels:
+      - "mcp.server=true"
+      - "mcp.server.name=file-agent"
+      - "mcp.server.port=3001"
+      - "mcp.server.protocol=http"
+
+  memory-agent:
+    build:
+      context: ..
+      dockerfile: environments/modules/memory-agent/Dockerfile
+    container_name: mcp-memory-agent
+    ports:
+      - "3002:3002"
+    volumes:
+      - ../registry:/app/data
+    environment:
+      - NODE_ENV=production
+      - MEMORY_AGENT_PORT=3002
+      - MEMORY_AGENT_HOST=0.0.0.0
+      - MEMORY_AGENT_DATA=/app/data
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    labels:
+      - "mcp.server=true"
+      - "mcp.server.name=memory-agent"
+      - "mcp.server.port=3002"
+      - "mcp.server.protocol=http"
+
+  intent-agent:
+    build:
+      context: ..
+      dockerfile: environments/modules/intent-agent/Dockerfile
+    container_name: mcp-intent-agent
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - INTENT_AGENT_PORT=3003
+      - INTENT_AGENT_HOST=0.0.0.0
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    labels:
+      - "mcp.server=true"
+      - "mcp.server.name=intent-agent"
+      - "mcp.server.port=3003"
+      - "mcp.server.protocol=http"
+
+  task-agent:
+    build:
+      context: ..
+      dockerfile: environments/modules/task-agent/Dockerfile
+    container_name: mcp-task-agent
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=production
+      - TASK_AGENT_PORT=3004
+      - TASK_AGENT_HOST=0.0.0.0
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    labels:
+      - "mcp.server=true"
+      - "mcp.server.name=task-agent"
+      - "mcp.server.port=3004"
+      - "mcp.server.protocol=http"
 
 networks:
   mcp-network:
