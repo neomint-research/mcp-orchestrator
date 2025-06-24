@@ -8,43 +8,156 @@
 const EventEmitter = require('events');
 const { exec } = require('child_process');
 const { promisify } = require('util');
+const fs = require('fs');
+const path = require('path');
 
 const execAsync = promisify(exec);
 
 class Discovery extends EventEmitter {
+    /**
+     * Get the current user's UID dynamically
+     */
+    static async getCurrentUID() {
+        try {
+            // Try to get UID from environment first (works in containers)
+            if (process.env.UID) {
+                return parseInt(process.env.UID);
+            }
+
+            // Try to get UID from process (works on Unix systems)
+            if (process.getuid && typeof process.getuid === 'function') {
+                return process.getuid();
+            }
+
+            // Fallback: try to execute 'id -u' command
+            const { stdout } = await execAsync('id -u');
+            return parseInt(stdout.trim());
+        } catch (error) {
+            // Last resort fallback to common UID
+            console.warn(`[Discovery] Could not determine current UID, using fallback 1001: ${error.message}`);
+            return 1001;
+        }
+    }
+
+    /**
+     * Get possible rootless Docker socket paths for the current user
+     */
+    static async getPossibleRootlessSocketPaths() {
+        const uid = await this.getCurrentUID();
+        const home = process.env.HOME || process.env.USERPROFILE || `/home/${process.env.USER || 'user'}`;
+
+        const paths = [
+            // Standard XDG runtime directory (most common)
+            `/run/user/${uid}/docker.sock`,
+            // Alternative runtime directories
+            `/tmp/docker-${uid}/docker.sock`,
+            `/var/run/user/${uid}/docker.sock`,
+            // User home directory locations
+            `${home}/.docker/run/docker.sock`,
+            `${home}/.docker/desktop/docker.sock`,
+            // Environment variable override
+            process.env.DOCKER_HOST ? process.env.DOCKER_HOST.replace('unix://', '') : null,
+            // Explicit environment variable for rootless socket
+            process.env.DOCKER_ROOTLESS_SOCKET_PATH
+        ].filter(Boolean); // Remove null/undefined entries
+
+        // Filter to only existing and accessible paths
+        const validPaths = [];
+        for (const socketPath of paths) {
+            try {
+                if (fs.existsSync(socketPath)) {
+                    // Check if it's actually a socket
+                    const stats = fs.statSync(socketPath);
+                    if (stats.isSocket()) {
+                        validPaths.push(socketPath);
+                    }
+                }
+            } catch (error) {
+                // Ignore access errors, path doesn't exist or no permission
+            }
+        }
+
+        // If no valid sockets found, return the most likely paths for testing
+        return validPaths.length > 0 ? validPaths : [
+            `/run/user/${uid}/docker.sock`,
+            `/tmp/docker-${uid}/docker.sock`
+        ];
+    }
+
+    /**
+     * Get the default rootless socket path for the current user
+     */
+    getDefaultRootlessSocketPath() {
+        // This is a synchronous fallback - we'll use async detection in detectDockerMode
+        const uid = process.env.UID || '1001'; // Use env UID or fallback
+        return `/run/user/${uid}/docker.sock`;
+    }
+
+    /**
+     * Validate Docker socket connectivity
+     */
+    static async validateDockerSocket(socketPath) {
+        try {
+            // Check if socket file exists and is accessible
+            if (!fs.existsSync(socketPath)) {
+                return { valid: false, reason: 'Socket file does not exist' };
+            }
+
+            const stats = fs.statSync(socketPath);
+            if (!stats.isSocket()) {
+                return { valid: false, reason: 'Path exists but is not a socket' };
+            }
+
+            // Try a simple Docker command to test connectivity
+            const testEnv = { ...process.env, DOCKER_HOST: `unix://${socketPath}` };
+            await execAsync('docker version --format "{{.Server.Version}}"', { env: testEnv, timeout: 5000 });
+
+            return { valid: true, reason: 'Socket is accessible and Docker responds' };
+        } catch (error) {
+            return { valid: false, reason: `Docker command failed: ${error.message}` };
+        }
+    }
     constructor(config = {}) {
         super();
-        
+
         this.config = {
             discoveryInterval: config.discoveryInterval || 30000,
-            dockerSocket: config.dockerSocket || '/var/run/docker.sock',
+            dockerRootlessSocket: config.dockerRootlessSocket || process.env.DOCKER_ROOTLESS_SOCKET_PATH || this.getDefaultRootlessSocketPath(),
+            dockerMode: 'rootless', // Force rootless mode - no fallback to standard Docker
+            retryAttempts: config.retryAttempts || parseInt(process.env.DISCOVERY_RETRY_ATTEMPTS) || 10,
+            retryDelay: config.retryDelay || parseInt(process.env.DISCOVERY_RETRY_DELAY) || 3000,
             labelFilter: config.labelFilter || 'mcp.server=true',
             ...config
         };
-        
+
         this.knownAgents = new Map();
         this.discoveryTimer = null;
         this.isDiscovering = false;
-        
+        this.dockerMode = null; // Will be determined at runtime
+        this.dockerHost = null; // Will be set based on detected mode
+
         this.log('INFO', 'Docker Discovery initialized');
     }
     
     /**
      * Start continuous agent discovery
      */
-    startDiscovery() {
+    async startDiscovery() {
         if (this.discoveryTimer) {
             this.log('WARN', 'Discovery already running');
             return;
         }
-        
+
         this.log('INFO', 'Starting continuous agent discovery');
-        
+
+        // Detect Docker mode first
+        await this.detectDockerMode();
+
         // Initial discovery
         this.discoverAgents().catch(error => {
             this.log('ERROR', `Initial discovery failed: ${error.message}`);
         });
-        
+
         // Set up periodic discovery
         this.discoveryTimer = setInterval(() => {
             if (!this.isDiscovering) {
@@ -74,11 +187,16 @@ class Discovery extends EventEmitter {
             this.log('DEBUG', 'Discovery already in progress, skipping');
             return Array.from(this.knownAgents.values());
         }
-        
+
         this.isDiscovering = true;
-        
+
         try {
             this.log('INFO', 'Starting agent discovery...');
+
+            // Detect Docker mode if not already detected
+            if (!this.dockerMode) {
+                await this.detectDockerMode();
+            }
             
             // Get all containers with MCP server label
             const containers = await this.getDockerContainers();
@@ -139,8 +257,8 @@ class Discovery extends EventEmitter {
     async getDockerContainers() {
         try {
             const command = 'docker ps --format "{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}" --filter "status=running"';
-            const { stdout } = await execAsync(command);
-            
+            const { stdout } = await this.executeDockerCommandWithRetry(command);
+
             if (!stdout.trim()) {
                 return [];
             }
@@ -160,8 +278,13 @@ class Discovery extends EventEmitter {
             const detailedContainers = await Promise.all(
                 containers.map(async (container) => {
                     try {
+                        const env = { ...process.env };
+                        if (this.dockerHost) {
+                            env.DOCKER_HOST = this.dockerHost;
+                        }
+
                         const inspectCommand = `docker inspect ${container.id}`;
-                        const { stdout: inspectOutput } = await execAsync(inspectCommand);
+                        const { stdout: inspectOutput } = await this.executeDockerCommandWithRetry(inspectCommand, env);
                         const inspectData = JSON.parse(inspectOutput)[0];
                         
                         return {
@@ -275,11 +398,84 @@ class Discovery extends EventEmitter {
     }
     
     /**
+     * Execute Docker command with retry logic for rootless Docker only
+     */
+    async executeDockerCommandWithRetry(command, env = process.env, attempt = 1) {
+        // Ensure rootless Docker mode is detected
+        if (!this.dockerMode) {
+            await this.detectDockerMode();
+        }
+
+        try {
+            // Use rootless Docker configuration
+            const finalEnv = { ...env };
+            if (this.dockerHost) {
+                finalEnv.DOCKER_HOST = this.dockerHost;
+            }
+
+            const { stdout, stderr } = await execAsync(command, { env: finalEnv });
+            return { stdout, stderr };
+        } catch (error) {
+            if (attempt < this.config.retryAttempts) {
+                this.log('WARN', `Rootless Docker command failed (attempt ${attempt}/${this.config.retryAttempts}): ${error.message}`);
+                await this.sleep(this.config.retryDelay * attempt); // Exponential backoff
+
+                // Use rootless Docker configuration for retry
+                const retryEnv = { ...env };
+                if (this.dockerHost) {
+                    retryEnv.DOCKER_HOST = this.dockerHost;
+                }
+
+                return this.executeDockerCommandWithRetry(command, retryEnv, attempt + 1);
+            } else {
+                this.log('ERROR', `Rootless Docker command failed after ${this.config.retryAttempts} attempts: ${error.message}`);
+                throw error;
+            }
+        }
+    }
+
+    /**
+     * Sleep utility for retry delays
+     */
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
+     * Detect rootless Docker mode and socket paths
+     */
+    async detectDockerMode() {
+        this.dockerMode = 'rootless'; // Force rootless mode
+        this.log('INFO', 'Initializing rootless Docker mode...');
+
+        // Get all possible rootless Docker socket paths
+        const possibleRootlessPaths = await Discovery.getPossibleRootlessSocketPaths();
+        this.log('DEBUG', `Checking rootless Docker socket paths: ${possibleRootlessPaths.join(', ')}`);
+
+        for (const rootlessSocketPath of possibleRootlessPaths) {
+            this.log('DEBUG', `Testing rootless Docker socket: ${rootlessSocketPath}`);
+            const validation = await Discovery.validateDockerSocket(rootlessSocketPath);
+
+            if (validation.valid) {
+                this.dockerHost = `unix://${rootlessSocketPath}`;
+                this.log('INFO', `Found rootless Docker at: ${rootlessSocketPath} (${validation.reason})`);
+                return;
+            } else {
+                this.log('DEBUG', `Rootless Docker socket invalid at ${rootlessSocketPath}: ${validation.reason}`);
+            }
+        }
+
+        // If no socket found, throw error - no fallback to standard Docker
+        this.log('ERROR', 'No accessible rootless Docker sockets found');
+        throw new Error('Rootless Docker is not available. Please ensure rootless Docker is installed and running. See: https://docs.docker.com/engine/security/rootless/');
+    }
+
+    /**
      * Check if Docker is available
      */
     async checkDockerAvailability() {
         try {
-            await execAsync('docker version');
+            await this.detectDockerMode();
             return true;
         } catch (error) {
             this.log('ERROR', `Docker not available: ${error.message}`);

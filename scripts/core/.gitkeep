@@ -1,0 +1,9 @@
+# Core Scripts Directory
+
+This directory contains core orchestrator operation scripts.
+
+Scripts include:
+- Health checking and monitoring
+- Port management and discovery
+- System status and diagnostics
+- Core service management

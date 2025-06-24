@@ -1,0 +1,9 @@
+# Deployment Scripts Directory
+
+This directory contains deployment and setup scripts for the MCP Orchestrator system.
+
+Scripts include:
+- System setup and initialization
+- Docker mode configuration
+- Environment preparation
+- Deployment automation

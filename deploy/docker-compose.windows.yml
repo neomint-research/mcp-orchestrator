@@ -1,19 +1,17 @@
-# MCP Multi-Agent Orchestrator - Unix/Linux Rootless Docker Configuration
-# This Docker Compose configuration is for Unix/Linux systems with rootless Docker
-# Designed exclusively for rootless Docker deployment for enhanced security
-# For Windows Docker Desktop, use docker-compose.windows.yml instead
+# MCP Multi-Agent Orchestrator - Windows Docker Desktop Configuration
+# This Docker Compose configuration is specifically for Windows Docker Desktop
+# Uses named pipes instead of Unix sockets for Docker communication
 #
 # Usage:
-#   export DOCKER_USER_ID=$(id -u)
-#   docker-compose up
+#   docker-compose -f docker-compose.windows.yml up
 #
 # Or use the provided script:
-#   ./scripts/deploy/start-rootless.sh
+#   .\scripts\deploy\start-rootless.ps1
 
 version: '3.8'
 
 services:
-  # MCP Multi-Agent Orchestrator Core (Rootless Mode Only)
+  # MCP Multi-Agent Orchestrator Core (Windows Docker Desktop)
   orchestrator:
     build:
       context: ..
@@ -25,8 +23,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      # Mount rootless Docker socket dynamically based on current user
-      - /run/user/${DOCKER_USER_ID:-1001}:/run/user/${DOCKER_USER_ID:-1001}:ro
+      # Windows Docker Desktop uses named pipes, no socket mounting needed
       # Mount registry for persistent storage
       - registry-data:/app/registry
       # Mount logs directory
@@ -38,9 +35,9 @@ services:
       - LOG_LEVEL=INFO
       - DISCOVERY_INTERVAL=30000
       - MCP_TIMEOUT=45000
-      # Force rootless Docker mode - no fallback to standard Docker
+      # Windows Docker Desktop configuration
       - DOCKER_MODE=rootless
-      - DOCKER_ROOTLESS_SOCKET_PATH=/run/user/${DOCKER_USER_ID:-1001}/docker.sock
+      - DOCKER_ROOTLESS_SOCKET_PATH=//./pipe/docker_engine
       - UID=${DOCKER_USER_ID:-1001}
       - DISCOVERY_RETRY_ATTEMPTS=10
       - DISCOVERY_RETRY_DELAY=3000
@@ -62,7 +59,7 @@ services:
       - "mcp.orchestrator.version=1.0.0"
       - "mcp.orchestrator.mode=rootless"
       - "mcp.security.rootless=true"
-      - "mcp.platform=unix"
+      - "mcp.platform=windows"
 
   # MCP Agent Modules
   file-agent:
@@ -182,7 +179,7 @@ networks:
     labels:
       - "mcp.network=true"
       - "mcp.security.rootless=true"
-      - "mcp.platform=unix"
+      - "mcp.platform=windows"
 
 volumes:
   registry-data:
@@ -190,11 +187,11 @@ volumes:
     labels:
       - "mcp.volume=registry"
       - "mcp.security.rootless=true"
-      - "mcp.platform=unix"
-
+      - "mcp.platform=windows"
+  
   temp-data:
     driver: local
     labels:
       - "mcp.volume=temp"
       - "mcp.security.rootless=true"
-      - "mcp.platform=unix"
+      - "mcp.platform=windows"

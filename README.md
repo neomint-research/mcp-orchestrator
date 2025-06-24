@@ -10,6 +10,7 @@ The MCP Multi-Agent Orchestrator provides a unified endpoint for Model Context P
 
 - **Single Unified MCP Endpoint**: All tool calls go through one orchestrator
 - **Dynamic Agent Discovery**: Automatically discovers MCP servers via Docker metadata
+- **Rootless Docker Support**: Enhanced security with automatic rootless Docker detection
 - **Explicit Intent Routing**: No implicit assumptions - all decisions require confirmation
 - **Test-First Development**: Every component includes explicit success conditions
 - **Self-Healing Architecture**: Automatic recovery and health monitoring
@@ -29,10 +30,34 @@ This project follows the NEOMINT-RESEARCH architecture with clear separation bet
 
 ## Quick Start
 
-1. **Prerequisites**: Docker, Docker Compose, Node.js 18+
-2. **Setup**: Run `./setup.ps1` for one-click initialization
-3. **Verify**: Use `scripts/health-check-all.sh` to check all components
-4. **Monitor**: Use `scripts/show-ports.sh` to see exposed ports
+### Rootless Docker (Security-First Deployment)
+The MCP Orchestrator is designed exclusively for rootless Docker deployment, providing enhanced security through user namespace isolation.
+
+1. **Install Rootless Docker**:
+   ```bash
+   # Linux/WSL
+   curl -fsSL https://get.docker.com/rootless | sh
+   export PATH=/home/$USER/bin:$PATH
+   export DOCKER_HOST=unix:///run/user/$(id -u)/docker.sock
+   systemctl --user enable docker
+   systemctl --user start docker
+   ```
+
+2. **Setup and Deploy**:
+   ```bash
+   # One-click setup
+   ./setup.ps1
+
+   # Start services
+   ./scripts/deploy/start-rootless.sh -d
+   ```
+
+3. **Verify Deployment**:
+   ```bash
+   curl http://localhost:3000/health
+   ```
+
+4. **Documentation**: See [Core System Guide](docs/core.md) and [System Overview](docs/system-overview.md)
 
 ## Agent Modules
 

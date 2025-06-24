@@ -2,6 +2,7 @@
 
 # MCP Multi-Agent Orchestrator - MCP Server Testing Script
 # Tests direct MCP connections to each agent and validates tool functionality
+# Moved to scripts/testing/ for better organization per NEOMINT-RESEARCH guidelines
 
 set -e
 

@@ -2,6 +2,7 @@
 
 # MCP Multi-Agent Orchestrator - Port Discovery Script
 # Lists all MCP agent containers with their external ports
+# Moved to scripts/core/ for better organization per NEOMINT-RESEARCH guidelines
 
 set -e
 

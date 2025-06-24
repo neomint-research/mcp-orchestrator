@@ -2,6 +2,7 @@
 
 # MCP Multi-Agent Orchestrator - Comprehensive Health Check Script
 # Verifies orchestrator and all agent containers are reachable and functional
+# Moved to scripts/core/ for better organization per NEOMINT-RESEARCH guidelines
 
 set -e
 

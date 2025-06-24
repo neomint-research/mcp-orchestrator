@@ -59,6 +59,9 @@ class MCPOrchestrator extends EventEmitter {
                 throw new Error(`Invalid initialization parameters: ${validationResult.error}`);
             }
 
+            // Detect Docker mode before discovery
+            await this.discovery.detectDockerMode();
+
             // Discover available agents
             const discoveredAgents = await this.discovery.discoverAgents();
             this.log('INFO', `Discovered ${discoveredAgents.length} agents`);

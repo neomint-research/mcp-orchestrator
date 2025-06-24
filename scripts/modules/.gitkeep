@@ -1,0 +1,9 @@
+# Module Scripts Directory
+
+This directory contains module-specific scripts and agent management tools.
+
+Scripts include:
+- Agent creation and configuration
+- Module-specific utilities
+- Agent lifecycle management
+- Module testing and validation

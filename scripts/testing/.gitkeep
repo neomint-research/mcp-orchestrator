@@ -1,0 +1,9 @@
+# Testing Scripts Directory
+
+This directory contains test scripts for validating Docker configurations and system functionality.
+
+Scripts include:
+- Docker mode testing and validation
+- Configuration verification
+- System integration tests
+- Rootless Docker compatibility tests

@@ -9,10 +9,16 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:unit": "jest tests/core --outputFile=temp/reports/unit-tests/unit-$(date +%Y%m%d-%H%M%S).json --json",
+    "test:integration": "jest tests/integration --outputFile=temp/reports/integration-tests/integration-$(date +%Y%m%d-%H%M%S).json --json",
+    "test:e2e": "jest tests/e2e --outputFile=temp/reports/e2e-tests/e2e-$(date +%Y%m%d-%H%M%S).json --json",
+    "test:resilience": "jest tests/resilience --outputFile=temp/reports/resilience-tests/resilience-$(date +%Y%m%d-%H%M%S).json --json",
+    "test:docker": "jest tests/integration/docker-configurations.test.js tests/integration/rootless-docker.test.js --outputFile=temp/reports/docker-tests/docker-$(date +%Y%m%d-%H%M%S).json --json",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e && npm run test:resilience && npm run test:docker",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "docker:build": "docker build -f environments/core/Dockerfile -t mcp-orchestrator:latest .",
-    "docker:run": "docker run -p 3000:3000 -v /var/run/docker.sock:/var/run/docker.sock mcp-orchestrator:latest",
+    "docker:run:rootless": "docker run -p 3000:3000 -v /run/user/$(id -u):/run/user/$(id -u):ro -e DOCKER_MODE=rootless mcp-orchestrator:latest",
     "compose:up": "cd deploy && docker-compose up --build",
     "compose:down": "cd deploy && docker-compose down",
     "health-check": "curl -f http://localhost:3000/health || exit 1"
@@ -56,6 +62,35 @@
       "text",
       "lcov",
       "html"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/temp/"
+    ],
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "testTimeout": 30000,
+    "verbose": true,
+    "projects": [
+      {
+        "displayName": "unit",
+        "testMatch": ["<rootDir>/tests/core/**/*.test.js"],
+        "testEnvironment": "node"
+      },
+      {
+        "displayName": "integration",
+        "testMatch": ["<rootDir>/tests/integration/**/*.test.js"],
+        "testEnvironment": "node"
+      },
+      {
+        "displayName": "e2e",
+        "testMatch": ["<rootDir>/tests/e2e/**/*.test.js"],
+        "testEnvironment": "node"
+      },
+      {
+        "displayName": "resilience",
+        "testMatch": ["<rootDir>/tests/resilience/**/*.test.js"],
+        "testEnvironment": "node"
+      }
     ]
   },
   "eslintConfig": {

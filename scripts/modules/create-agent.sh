@@ -2,6 +2,7 @@
 
 # MCP Multi-Agent Orchestrator - Agent Generator Script
 # Generates complete NEOMINT-compliant module structure for new agents
+# Moved to scripts/modules/ for better organization per NEOMINT-RESEARCH guidelines
 
 set -e
 
